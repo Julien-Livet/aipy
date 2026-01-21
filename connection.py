@@ -20,7 +20,7 @@ class Connection:
         return False
 
     def __hash__(self):
-        return hash(self.neuron) + int(np.sum([hash(x) for x in self.inputs]))
+        return hash(self.neuron) + sum([hash(x) for x in self.inputs])
 
     def dot(self, index: int = 0):
         s = ""
