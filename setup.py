@@ -5,4 +5,4 @@ setup(name = 'aipy',
       description = 'Artificial intelligence projet in Python',
       author = 'Julien LIVET',
       author_email = 'julien.livet@free.fr',
-      install_requires = ['numpy', 'pydot', 'requests', 'sortedcontainers', 'sympy', 'textdistance'])
+      install_requires = ['numpy', 'pathos', 'pydot', 'requests', 'sortedcontainers', 'sympy', 'textdistance'])

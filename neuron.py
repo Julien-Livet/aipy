@@ -30,4 +30,5 @@ class Neuron:
         return False
 
     def __hash__(self):
-        return hash(self.function)
+        return hash(self.name) + sum([hash(x) for x in self.inputTypes]) + hash(self.outputType)
+

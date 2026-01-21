@@ -14,10 +14,22 @@ eps = 1e-6
 
 class Set(list):
     def __init__(self, s: set = {}):
-        super().__init__(sorted(list(set(s)), key = lambda x: hash(x)))
+        l = sorted(list(set(s)), key = lambda x: hash(x))
+        m = {}
+
+        for x in l:
+            m[hash(x)] = x
+
+        super().__init__(m.values())
 
     def add(self, e):
-        super().__init__(sorted(list(set(self + [e])), key = lambda x: hash(x)))
+        l = sorted(list(set(self + [e])), key = lambda x: hash(x))
+        m = {}
+
+        for x in l:
+            m[hash(x)] = x
+
+        super().__init__(m.values())
 
         return self
 
@@ -86,6 +98,12 @@ class Pair:
         self.connectionId = connectionId
         self.connection = connection
 
+def connectionWorker(connection, args):
+    c = connection.copy()
+    c.applyInputs(args)
+    
+    return c
+                    
 def worker(eps, connection, bestPair, g, target, processes, processId, connectionId):
     while (processes[processId]):
         try:
@@ -134,7 +152,7 @@ class Brain:
         assert(len(targets) == len(targetTypes))
 
         parameters = dict()
-        connections = set()
+        connections = Set()
 
         for neuron in self.neurons:
             if (len(neuron.inputTypes) == 0):
@@ -150,7 +168,7 @@ class Brain:
             mapping = copy.deepcopy(connectionMapping)
 
             for connection in connections:
-                s = mapping.get(connection.neuron.outputType, set())
+                s = mapping.get(connection.neuron.outputType, Set())
 
                 connectionInputTypes = connection.inputTypes()
                 args = []
@@ -163,11 +181,13 @@ class Brain:
 
                     for v in l:
                         args[i].append(v)
+                        
+                product = list(itertools.product(*args))
 
-                for p in itertools.product(*args):
-                    c = connection.copy()
-                    c.applyInputs(p)
-                    s.add(c)
+                from pathos.multiprocessing import ProcessingPool as Pool
+
+                with Pool(nodes = multiprocessing.cpu_count()) as p:
+                    s = Set(list(s) + p.map(connectionWorker, [connection] * len(product), product))
 
                 mapping[connection.neuron.outputType] = s
 
