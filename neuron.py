@@ -25,7 +25,7 @@ class Neuron:
 
     def __eq__(self, other):
         if (isinstance(other, Neuron)):
-            return self.name == other.name and self.function == other.function and self.inputTypes == other.inputTypes and self.outputType == other.outputType
+            return self.name == other.name and self.inputTypes == other.inputTypes and self.outputType == other.outputType
 
         return False
 

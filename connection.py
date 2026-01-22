@@ -1,5 +1,4 @@
 from neuron import Neuron
-import numpy as np
 import typing
 
 class Connection:
@@ -170,3 +169,4 @@ class Connection:
             s += "(" + ", ".join(args) + ")"
 
         return s
+

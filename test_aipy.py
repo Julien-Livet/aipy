@@ -192,15 +192,15 @@ def inputOutputPairs(pairs):
 
     return (inputs, outputs)
 
-def regionSet(m: np.ndarray, diagonals: bool) -> brain.Set:
-    s = brain.Set()
+def regionSet(m: np.ndarray, diagonals: bool) -> set:
+    s = set()
 
     for i in range(0, m.shape[0]):
         for j in range(0, m.shape[1]):
-            r = sorted(primitives.region(m, (i, j), diagonals))
+            r = tuple(sorted(primitives.region(m, (i, j), diagonals)))
 
             if (not r in s):
-                s.add(tuple(r))
+                s.add(r)
 
     return s
 
@@ -320,7 +320,7 @@ def processTask(folder: str, task: str, activatedNeuronNames: list[str]):
 
     b = brain.Brain(neurons)
 
-    connections = b.learn([trainPairs[1]], [list[np.ndarray]])
+    connections = b.learn([trainPairs[1]], [list[np.ndarray]], level = 3)
 
     if (len(connections) == 0):
         return -1

@@ -12,37 +12,6 @@ import typing
 
 eps = 1e-6
 
-class Set(list):
-    def __init__(self, s: set = {}):
-        l = sorted(list(set(s)), key = lambda x: hash(x))
-        m = {}
-
-        for x in l:
-            m[hash(x)] = x
-
-        super().__init__(m.values())
-
-    def add(self, e):
-        l = sorted(list(set(self + [e])), key = lambda x: hash(x))
-        m = {}
-
-        for x in l:
-            m[hash(x)] = x
-
-        super().__init__(m.values())
-
-        return self
-
-    def erase(self, e):
-        if (not e in self):
-            return self
-
-        del self[self.index(e)]
-
-        super().__init__(sorted(list(set(self)), key = lambda x: hash(x)))
-
-        return self
-
 def heuristic(val, target):
     if (isinstance(target, str)):
         s = val
@@ -75,6 +44,8 @@ def heuristic(val, target):
         else:
             return 1 + heuristic(str(val), str(target))
 
+    unknown = False
+
     try:
         v = np.array(val)
         t = np.array(target)
@@ -84,11 +55,31 @@ def heuristic(val, target):
 
         return np.linalg.norm(np.subtract(v, t))
     except:
-        try:
-            return 999.0
-            #return abs(hash(val) - hash(target))
-        except:
-            return 999.0
+        unknown = True
+
+    if (unknown):
+        unknown = False
+
+        if (type(val) == list and type(target) == list):
+            try:
+                v = val
+                t = target
+
+                if (len(v) != len(t)):
+                    return 100 + abs(sum(v) - sum(t))
+
+                x = []
+
+                for i in range(0, len(v)):
+                    x.append(heuristic(v[i], t[i]))
+
+                return np.linalg.norm(x)
+            except:
+                unknown = True
+        else:
+            unknown = True
+        
+    return 999.0
 
 class Pair:
     def __init__(self, value, cost, connectionCost, connectionId, connection):
@@ -152,7 +143,7 @@ class Brain:
         assert(len(targets) == len(targetTypes))
 
         parameters = dict()
-        connections = Set()
+        connections = set()
 
         for neuron in self.neurons:
             if (len(neuron.inputTypes) == 0):
@@ -168,7 +159,7 @@ class Brain:
             mapping = copy.deepcopy(connectionMapping)
 
             for connection in connections:
-                s = mapping.get(connection.neuron.outputType, Set())
+                s = mapping.get(connection.neuron.outputType, set())
 
                 connectionInputTypes = connection.inputTypes()
                 args = []
@@ -187,18 +178,17 @@ class Brain:
                 from pathos.multiprocessing import ProcessingPool as Pool
 
                 with Pool(nodes = multiprocessing.cpu_count()) as p:
-                    s = Set(list(s) + p.map(connectionWorker, [connection] * len(product), product))
-
+                    s |= set(p.map(connectionWorker, [connection] * len(product), product))
+                
                 mapping[connection.neuron.outputType] = s
 
             connectionMapping = mapping
-
             connections = []
 
             for k, v in connectionMapping.items():
                 connections += v
 
-            connections = Set(connections)
+            connections = set(connections)
 
         for neuron in self.neurons:
             if (len(neuron.inputTypes) == 0):

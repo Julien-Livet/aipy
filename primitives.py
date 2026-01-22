@@ -30,8 +30,8 @@ def region(a: np.ndarray, at: tuple[int, int], diagonals: bool) -> list[tuple[in
     if (not validIndex(a, at)):
         return []
 
-    s = brain.Set()
-    stack = brain.Set()
+    s = set()
+    stack = set()
     stack.add(at)
 
     v = a[at[0]][at[1]]
@@ -39,8 +39,10 @@ def region(a: np.ndarray, at: tuple[int, int], diagonals: bool) -> list[tuple[in
     indices = []
 
     while (len(stack)):
-        loc = stack[0]
-        stack.erase(loc)
+        l = list(stack)
+        loc = l[0]
+        del l[0]
+        stack = set(l)
 
         if (not loc in s):
             s.add(loc)
