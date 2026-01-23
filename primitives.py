@@ -127,19 +127,24 @@ def segments(dst: np.ndarray, pairs: list[tuple[tuple[int, int], tuple[int, int]
 
     return m
 
-def map(x: np.ndarray, mapping: dict) -> np.ndarray:
+def map(x: list[np.ndarray], mapping: dict) -> list[np.ndarray]:
     """
     Role: mapping_applier
-    Return a numpy array which cells ared mapped from a dictionnary
+    Return numpy arrays which cells ared mapped from a dictionnary
     """
     
-    y = copy.deepcopy(x)
+    result = []
+    
+    for v in x:
+        y = copy.deepcopy(v)
 
-    for i in range(0, y.shape[0]):
-        for j in range(0, y.shape[1]):
-            y[i, j] = mapping.get(y[i, j], y[i, j])
+        for i in range(0, y.shape[0]):
+            for j in range(0, y.shape[1]):
+                y[i, j] = mapping.get(y[i, j], y[i, j])
 
-    return y
+        result.append(y)
+
+    return result
 
 def associate(mapping: dict, a: int, b: int) -> dict:
     """
