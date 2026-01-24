@@ -1,70 +1,7 @@
 import brain
 import copy
 import numpy as np
-
-def validIndex(a: np.ndarray, at: tuple[int, int]) -> bool:
-    """
-    Check if the index is within the bounds of a numpy array
-    """
-    
-    return (0 <= at[0] and at[0] < a.shape[0] and 0 <= at[1] and at[1] < a.shape[1])
-
-def neighbors(loc: tuple[int, int], size: tuple[int, int], diagonals: bool) -> list[tuple[int, int]]:
-    """
-    Return a list of the neighboring indices of a given index considering diagonal neihbors or not
-    """
-    n = []
-
-    for di in range(-1, 2):
-        for dj in range(-1, 2):
-            if (di == 0 and dj == 0):
-                continue
-
-            i = loc[0] + di
-            j = loc[1] + dj
-
-            if (not (0 <= i and i < size[0] and 0 <= j and j < size[1])):
-                continue
-
-            if (not diagonals and abs(di) == abs(dj)):
-                continue
-
-            n.append((i, j))
-
-    return n
-
-def region(a: np.ndarray, at: tuple[int, int], diagonals: bool) -> list[tuple[int, int]]:
-    """
-    Return a list of indices in the same region as the given index considering diagonal neihbors or not
-    """
-    
-    if (not validIndex(a, at)):
-        return []
-
-    s = set()
-    stack = set()
-    stack.add(at)
-
-    v = a[at[0]][at[1]]
-
-    indices = []
-
-    while (len(stack)):
-        l = list(stack)
-        loc = l[0]
-        del l[0]
-        stack = set(l)
-
-        if (not loc in s):
-            s.add(loc)
-
-            if (abs(a[loc[0]][loc[1]] - v) < brain.eps):
-                indices.append(loc)
-
-                for n in neighbors(loc, (a.shape[0], a.shape[1]), diagonals):
-                    stack.add(n)
-
-    return indices
+import utils
 
 def dotSegment(dst: np.ndarray, begin: tuple[int, int], end: tuple[int, int], value: int, dot_step: int) -> np.ndarray:
     """
@@ -96,7 +33,7 @@ def segments(dst: np.ndarray, pairs: list[tuple[tuple[int, int], tuple[int, int]
     m = copy.deepcopy(dst)
 
     for pair in pairs:
-        if (validIndex(m, pair[0]) and validIndex(m, pair[1])):
+        if (utils.validIndex(m, pair[0]) and utils.validIndex(m, pair[1])):
             s = m[pair[0][0]][pair[0][1]]
             f = m[pair[1][0]][pair[1][1]]
 

@@ -9,6 +9,7 @@ import pytest
 import subprocess
 import time
 import urllib.request
+import utils
 
 @pytest.fixture(autouse = True)
 def print_test_duration(request):
@@ -45,33 +46,63 @@ def inputOutputPairs(pairs):
 
     return (inputs, outputs)
 
-def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> list[str]:
-    command = "Here is the full list of available functions defined in this Python file:\n"
+def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> tuple[list[str], list[str]]:
+    url = urllib.request.urlopen("https://raw.githubusercontent.com/arcprize/ARC-AGI-2/refs/heads/main/data/" + folder + "/" + task + ".json")
+
+    command = "Here is an ARC AGI task.\n"
+    command += url.read().decode() + "\n"
+    command += "Describe the transformation performed in ONE abstract sentence (ignoring the exact dimensions and coordinates).\n"
+    command += "Do not mention any Python functions."
+
+    modelName = "gemma3"
+
+    cmd = ["ollama", "run", modelName, command]
+    result = subprocess.run(cmd, capture_output = True, text = True)
+    sentence = result.stdout.replace("\n", "")
+    #print(sentence)
 
     file = open("primitives.py")
     content = file.read()
     file.close()
 
-    command += content + "\n"
-    command += "---\n"
-    command += "Here is an ARC AGI task:\n"
+    functions = []
 
-    url = urllib.request.urlopen("https://raw.githubusercontent.com/arcprize/ARC-AGI-2/refs/heads/main/data/" + folder + "/" + task + ".json")
+    lines = content.split("\n")
 
-    command += url.read().decode() + "\n"
-    command += "---\n"
-    command += "For the previous ARC task, assign each function a relevance score between 0.0 and 1.0 indicating the probability that it is useful for solving the task.\n"
-    command += "Currently, for a cost of " + str(cost) + ", the best expression is: " + connectionStr + ".\n"
-    command += "The answer must strictly adhere to the following format:\n"
-    command += "{\n"
-    command += """  "functionName1": 0.9,\n"""
-    command += """  "functionName2": 0.6\n"""
-    command += "}\n"
+    for line in lines:
+        if (line.startswith("def ")):
+            functions.append(line[len("def "):line.find("(")])
 
-    cmd = ["ollama", "run", "gemma3:27b", command.replace('"', '\\"')]
-    result = subprocess.run(cmd, capture_output = True, text = True)
-    data = json.loads(result.stdout.replace("```json", "").replace("```", ""))
-    scores = list(reversed(sorted(data.items(), key = lambda x: x[1])))
+    import primitives
+
+    scores = {}
+
+    for function in functions:
+        cmd = ["python", "-c", "import primitives; help(primitives." + function + ")"]
+        result = subprocess.run(cmd, capture_output = True, text = True)
+
+        functionLines = result.stdout.split("\n")
+
+        for i in range(0, 2):
+            del functionLines[0]
+            del functionLines[-1]
+
+        functionContent = "\n".join(functionLines)
+
+        command = "Task description:\n"
+        command += sentence + "\n"
+        command += "Primitive:\n"
+        command += functionContent + "\n"
+        command += "GIVE ME ONLY WITHOUT ANY EXPLANATION THE NUMBER that corresponds to the relevance of this primitive to the given task. (a score of 0.0 indicates a useless function, a score of 1.0 indicates an essential function)?\n"
+
+        cmd = ["ollama", "run", modelName, command]
+        result = subprocess.run(cmd, capture_output = True, text = True)
+        scores[function] = float(result.stdout.split()[0])
+
+    scores = dict(list(reversed(sorted(scores.items(), key = lambda x: x[1]))))
+    #functions = list(scores.keys())
+    scores = list({k: v for k, v in scores.items() if v > 0}.items())
+    #print(scores)
 
     functions = [scores[0][0]]
     lastScore = scores[0][1]
@@ -80,44 +111,115 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> l
         if (abs(lastScore - scores[i][1]) > 0.25):
             break
 
+        lastScore = scores[i][1]
         functions.append(scores[i][0])
+    #print(functions)
+    definitions = []
 
-    return functions
+    #...
+
+    return (functions, definitions)
+
+def updateRegionNeurons(regionNeurons: dict, pairs: list[np.ndarray]):
+    regionMap = dict()
+
+    for input_ in pairs:
+        s = utils.regionSet(input_, False)
+
+        regions = dict()
+
+        for i in range(0, 10):
+            regions[i] = []
+
+        for r in s:
+            regions[input_[r[0][0], r[0][1]]].append(r)
+
+        for k, v in regions.items():
+            l = regionMap.get(k, [])
+            l.append(v)
+            regionMap[k] = l
+
+    for k, v in regionMap.items():
+        function = lambda v = v: v
+
+        emptyCount = 0
+
+        for l in v:
+            if (len(l) == 0):
+                emptyCount += 1
+
+        if (regionNeurons.get(k, None) == None):
+            if (emptyCount != len(v)):
+                regionNeurons[k] = Neuron("region" + str(k), function, [], list[list[list[tuple[int, int]]]])
+        else:
+            if (emptyCount != len(v)):
+                regionNeurons[k].function = function
+            else:
+                del regionNeurons[k]
 
 def processTask(folder: str, task: str) -> int:
     taskPairs = trainTestPairs(folder, task)
     trainPairs = inputOutputPairs(taskPairs[0])
     testPairs = inputOutputPairs(taskPairs[1])
 
+    falseNeuron = Neuron("False", lambda: False, [], bool)
+    trueNeuron = Neuron("True", lambda: True, [], bool)
     inputNeuron = Neuron("input", lambda trainPairs = trainPairs: trainPairs[0], [], list[np.ndarray])
     pairsNeuron = Neuron("pairs", lambda v, taskPairs = taskPairs: [] if len(taskPairs[0]) != len(v) else [(v[i], taskPairs[0][i][1]) for i in range(0, len(taskPairs[0]))], [list[np.ndarray]], list[tuple[np.ndarray, np.ndarray]])
     trainPairsNeuron = Neuron("trainPairs", lambda taskPairs = taskPairs: taskPairs[0], [], list[tuple[np.ndarray, np.ndarray]])
+
+    digitNeurons = []
+
+    for i in range(0, 10):
+        digitNeurons.append(Neuron(str(i), lambda i = i: i, [], int))
 
     connectionStr = "input"
     cost = brain.heuristic(trainPairs[0], trainPairs[1])
 
     while (cost):
-        neurons = [inputNeuron, pairsNeuron, trainPairsNeuron]
+        regionNeurons = dict()
+        updateRegionNeurons(regionNeurons, trainPairs[0])
 
-        p = bestPrimitives(folder, task, connectionStr, cost)
+        neurons = [inputNeuron, falseNeuron, trueNeuron, pairsNeuron, trainPairsNeuron]
+
+        for k, v in regionNeurons.items():
+            neurons.append(v)
+
+        digits = set()
+
+        for m in trainPairs[0]:
+            for v in m.reshape(m.size):
+                digits.add(v)
+
+        for m in trainPairs[1]:
+            for v in m.reshape(m.size):
+                digits.add(v)
+
+        existingDigits = []
+
+        for i in range(0, 10):
+            existingDigits.append(i in digits)
+
+        for i in range(0, len(digitNeurons)):
+            if (existingDigits[i]):
+                neurons.append(digitNeurons[i])
+
+        p, definitions = bestPrimitives(folder, task, connectionStr, cost)
 
         import primitives
 
         for primitive in p:
-            try:
-                function = getattr(primitives, primitive)
-                annotations = function.__annotations__
-                outputType = copy.copy(annotations["return"])
-                del annotations["return"]
-                inputTypes = list(annotations.values())
+            function = getattr(primitives, primitive)
+            annotations = copy.deepcopy(function.__annotations__)
+            outputType = copy.deepcopy(annotations["return"])
+            del annotations["return"]
+            inputTypes = list(annotations.values())
 
-                neurons.append(Neuron(primitive, function, inputTypes, outputType))
-            except:
-                pass
+            neurons.append(Neuron(primitive, function, inputTypes, outputType))
 
         b = brain.Brain(neurons)
 
-        connections = b.learn([trainPairs[1]], [list[np.ndarray]], level = 2)
+        connections = b.learn([trainPairs[1]], [list[np.ndarray]], level = 3)
 
         if (len(connections) == 0):
             continue
@@ -129,6 +231,8 @@ def processTask(folder: str, task: str) -> int:
 
         if (cost):
             continue
+
+        updateRegionNeurons(regionNeurons, testPairs[0]);
 
         inputNeuron.function = lambda testPairs = testPairs: testPairs[0]
         cost = brain.heuristic(connection.output(), testPairs[1])
@@ -143,3 +247,6 @@ def test_task3c9b0459(): #Flip left/right and flip up/down
 
 def test_task0d3d703e(): #Color mapping
     processTask("training", "0d3d703e")
+
+def test_task253bf280(): #Draw colored segment between pixels that have same x or y coordinates
+    processTask("training", "253bf280")
