@@ -77,11 +77,11 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> l
     lastScore = scores[0][1]
 
     for i in range(1, len(scores)):
-        if (abs(lastScore - scores[i][1]) >= 0.25):
+        if (abs(lastScore - scores[i][1]) > 0.25):
             break
 
         functions.append(scores[i][0])
-    print(functions)
+
     return functions
 
 def processTask(folder: str, task: str) -> int:
