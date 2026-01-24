@@ -2,21 +2,8 @@ import brain
 import copy
 import numpy as np
 
-"""
-Possible roles sorted in ascending priorities:
-- 1. predicate: Boolean test / local condition, never sufficient on its own
-- 2. helper: Utility component, never sufficient on its own
-- 3. local_operator: Local operation, limited expressive power on its own
-- 4. structural_extractor: Extracts a structure (region, pairs, graph)
-- 5. structural_transformer: Transforms one structure into another
-- 6. mapping_builder: Constructs a symbolic structure (dictionary, rule)
-- 7. image_transformer: Directly transforms an image
-- 8. mapping_applier: Applies a rule to data
-"""
-
 def validIndex(a: np.ndarray, at: tuple[int, int]) -> bool:
     """
-    Role: predicate
     Check if the index is within the bounds of a numpy array
     """
     
@@ -24,7 +11,6 @@ def validIndex(a: np.ndarray, at: tuple[int, int]) -> bool:
 
 def neighbors(loc: tuple[int, int], size: tuple[int, int], diagonals: bool) -> list[tuple[int, int]]:
     """
-    Role: local_operator
     Return a list of the neighboring indices of a given index considering diagonal neihbors or not
     """
     n = []
@@ -49,7 +35,6 @@ def neighbors(loc: tuple[int, int], size: tuple[int, int], diagonals: bool) -> l
 
 def region(a: np.ndarray, at: tuple[int, int], diagonals: bool) -> list[tuple[int, int]]:
     """
-    Role: structural_extractor
     Return a list of indices in the same region as the given index considering diagonal neihbors or not
     """
     
@@ -83,7 +68,6 @@ def region(a: np.ndarray, at: tuple[int, int], diagonals: bool) -> list[tuple[in
 
 def dotSegment(dst: np.ndarray, begin: tuple[int, int], end: tuple[int, int], value: int, dot_step: int) -> np.ndarray:
     """
-    Role: image_transformer
     Dot a straight line between two points in an numpy array with the specified value.
     """
     m = copy.deepcopy(dst)
@@ -107,8 +91,7 @@ def dotSegment(dst: np.ndarray, begin: tuple[int, int], end: tuple[int, int], va
 
 def segments(dst: np.ndarray, pairs: list[tuple[tuple[int, int], tuple[int, int]]], value: int, start: bool, finish: bool) -> np.ndarray:
     """
-    Role: image_transformer
-    Dot straight lines between a list of two points in an numpy array with the specified value considering coloring or not start and finish points.
+    Dot straight lines between a list of two points in an numpy array with the specified value considering coloring or not start and finish points
     """
     m = copy.deepcopy(dst)
 
@@ -129,7 +112,6 @@ def segments(dst: np.ndarray, pairs: list[tuple[tuple[int, int], tuple[int, int]
 
 def map(x: list[np.ndarray], mapping: dict) -> list[np.ndarray]:
     """
-    Role: mapping_applier
     Return numpy arrays which cells ared mapped from a dictionnary
     """
     
@@ -148,7 +130,6 @@ def map(x: list[np.ndarray], mapping: dict) -> list[np.ndarray]:
 
 def associate(mapping: dict, a: int, b: int) -> dict:
     """
-    Role: mapping_builder
     Associate a value with another value in a dictionnary
     """
     m = copy.deepcopy(mapping)
@@ -159,8 +140,7 @@ def associate(mapping: dict, a: int, b: int) -> dict:
 
 def inferColorMapping(pairs: list[tuple[np.ndarray, np.ndarray]]) -> dict:
     """
-    Role: mapping_builder
-    Infer a color mapping from the given pairs of numpy arrays as a dictionnary, it can be combined with map
+    Infer a color mapping from the given pairs of numpy arrays as a dictionnary
     """
     mapping = {}
 
@@ -182,7 +162,6 @@ def inferColorMapping(pairs: list[tuple[np.ndarray, np.ndarray]]) -> dict:
 
 def sameElement(pairs: list[tuple[tuple[int, int], tuple[int, int]]], first: bool) -> list[tuple[tuple[int, int], tuple[int, int]]]:
     """
-    Role: structural_transformer
     Return a list of index pairs in an numpy array where the elements are the same considering first or second element of a pair
     """
     
@@ -200,7 +179,6 @@ def sameElement(pairs: list[tuple[tuple[int, int], tuple[int, int]]], first: boo
 
 def regionPairs(regions: list[list[tuple[int, int]]]) -> list[tuple[tuple[int, int], tuple[int, int]]]:
     """
-    Role: structural_transformer
     Return a list of paired regions from a list of regions
     """
     
@@ -214,3 +192,16 @@ def regionPairs(regions: list[list[tuple[int, int]]]) -> list[tuple[tuple[int, i
 
     return pairs
 
+def fliplr(x: list[np.ndarray]) -> list[np.ndarray]:
+    """
+    Flip left/right a list of numpy array
+    """
+    
+    return [np.fliplr(y) for y in x]
+
+def flipud(x: list[np.ndarray]) -> list[np.ndarray]:
+    """
+    Flip up/down a list of numpy array
+    """
+    
+    return [np.flipud(y) for y in x]
