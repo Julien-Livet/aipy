@@ -110,7 +110,7 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
 
         cmd = ["ollama", "run", modelName, command]
         result = subprocess.run(cmd, capture_output = True, text = True)
-        scores[function] = float(result.stdout)
+        scores[function] = float(result.stdout.replace(" ", "").strip())
 
     scores = dict(list(reversed(sorted(scores.items(), key = lambda x: x[1]))))
     #print(scores)
