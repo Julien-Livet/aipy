@@ -1,5 +1,28 @@
 import numpy as np
 
+def dotSegment(dst: np.ndarray, begin: tuple[int, int], end: tuple[int, int], value: int, dot_step: int) -> np.ndarray:
+    """
+    Dot a straight line between two points in an numpy array with the specified value.
+    """
+    m = copy.deepcopy(dst)
+
+    u = np.array([end[0], end[1]]) - np.array([begin[0], begin[1]])
+    v = u / np.linalg.norm(u)
+
+    if (min(v)):
+        v *= min(v)
+
+    step = np.linalg.norm(v) / np.linalg.norm(u)
+    i = 0
+
+    for t in np.arange(0, 1 + 0.1 * step, step):
+        if (i % dot_step == 0):
+            m[round(begin[0] + t * u[0]), round(begin[1] + t * u[1])] = value
+
+        i += 1
+
+    return m
+
 def regionSet(m: np.ndarray, diagonals: bool) -> set:
     s = set()
 

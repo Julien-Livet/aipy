@@ -9,6 +9,7 @@ import pydot
 import pytest
 import time
 import urllib.request
+import utils
 
 @pytest.fixture(autouse = True)
 def print_test_duration(request):
@@ -197,7 +198,7 @@ def regionSet(m: np.ndarray, diagonals: bool) -> set:
 
     for i in range(0, m.shape[0]):
         for j in range(0, m.shape[1]):
-            r = tuple(sorted(primitives.region(m, (i, j), diagonals)))
+            r = tuple(sorted(utils.region(m, (i, j), diagonals)))
 
             if (not r in s):
                 s.add(r)
@@ -248,21 +249,19 @@ def processTask(folder: str, task: str, activatedNeuronNames: list[str]):
 
     falseNeuron = Neuron("False", lambda: False, [], bool)
     trueNeuron = Neuron("True", lambda: True, [], bool)
-    fliplrNeuron = Neuron("fliplr", lambda x: [np.fliplr(v) for v in x], [list[np.ndarray]], list[np.ndarray])
-    flipudNeuron = Neuron("flipud", lambda x: [np.flipud(v) for v in x], [list[np.ndarray]], list[np.ndarray])
+    fliplrNeuron = Neuron("fliplr", primitives.fliplr, [list[np.ndarray]], list[np.ndarray])
+    flipudNeuron = Neuron("flipud", primitives.flipud, [list[np.ndarray]], list[np.ndarray])
     mappingNeuron = Neuron("mapping", lambda: dict(), [], dict())
     associateNeuron = Neuron("associate", primitives.associate, [dict, int, int], dict)
     mapNeuron = Neuron("map", primitives.map, [list[np.ndarray], dict], list[np.ndarray])
     inferColorMappingNeuron = Neuron("inferColorMapping", primitives.inferColorMapping, [list[tuple[np.ndarray, np.ndarray]]], dict)
-    pairsNeuron = Neuron("pairs", lambda v, taskPairs = taskPairs: [] if len(taskPairs[0]) != len(v) else [(v[i], taskPairs[0][i][1]) for i in range(0, len(taskPairs[0]))], [list[np.ndarray]], list[tuple[np.ndarray, np.ndarray]])
+    pairsNeuron = Neuron("pairs", lambda v, taskPairs = taskPairs: [] if len(taskPairs[0]) != len(v) else [(v[i], taskPairs[0][i][1]) for i in range(0, len(taskPairs[0]))],
+                         [list[np.ndarray]], list[tuple[np.ndarray, np.ndarray]])
     trainPairsNeuron = Neuron("trainPairs", lambda taskPairs = taskPairs: taskPairs[0], [], list[tuple[np.ndarray, np.ndarray]])
     inputNeuron = Neuron("input", lambda trainPairs = trainPairs: trainPairs[0], [], list[np.ndarray])
-    segmentsNeuron = Neuron("segments", lambda v1, v2, value, start, finish: [] if len(v1) != len(v2) else [primitives.segments(v1[i], v2[i], value, start, finish) for i in range(0, len(v1))],
-                            [list[np.ndarray], list[list[tuple[tuple[int, int], tuple[int, int]]]], int, bool, bool], list[np.ndarray])
-    sameElementNeuron = Neuron("sameElement", lambda v, first: [primitives.sameElement(x, first) for x in v],
-                               [list[list[tuple[tuple[int, int], tuple[int, int]]]], bool], list[list[tuple[tuple[int, int], tuple[int, int]]]])
-    regionPairsNeuron = Neuron("regionPairs", lambda v: [primitives.regionPairs(x) for x in v],
-                               [list[list[list[tuple[int, int]]]]], list[list[tuple[tuple[int, int], tuple[int, int]]]])
+    segmentsNeuron = Neuron("segments", primitives.segments, [list[np.ndarray], list[list[tuple[tuple[int, int], tuple[int, int]]]], int, bool, bool], list[np.ndarray])
+    sameElementNeuron = Neuron("sameElement", primitives.sameElement, [list[list[tuple[tuple[int, int], tuple[int, int]]]], bool], list[list[tuple[tuple[int, int], tuple[int, int]]]])
+    regionPairsNeuron = Neuron("regionPairs", primitives.regionPairs, [list[list[list[tuple[int, int]]]]], list[list[tuple[tuple[int, int], tuple[int, int]]]])
 
     regionNeurons = dict()
     updateRegionNeurons(regionNeurons, trainPairs[0])

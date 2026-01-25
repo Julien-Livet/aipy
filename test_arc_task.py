@@ -48,17 +48,30 @@ def inputOutputPairs(pairs):
 
 def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> tuple[list[str], list[str]]:
     url = urllib.request.urlopen("https://raw.githubusercontent.com/arcprize/ARC-AGI-2/refs/heads/main/data/" + folder + "/" + task + ".json")
+    data = json.loads(url.read().decode())
 
     command = "Here is an ARC AGI task.\n"
-    command += url.read().decode() + "\n"
-    command += "Describe the transformation performed in ONE abstract sentence (ignoring the exact dimensions and coordinates).\n"
+    command += json.dumps(data["train"]) + "\n"
+    command += "Describe the transformation performed in ONE abstract sentence (ignoring the exact dimensions, coordinates and numbers).\n"
     command += "Do not mention any Python functions."
 
     modelName = "gemma3"
 
-    cmd = ["ollama", "run", modelName, command]
+    cmd = ["ollama", "run", "gemma3", command]
     result = subprocess.run(cmd, capture_output = True, text = True)
-    sentence = result.stdout.replace("\n", "")
+    firstSentence = result.stdout.replace("\n", "")
+    cmd = ["ollama", "run", "gemma3:27b", command]
+    result = subprocess.run(cmd, capture_output = True, text = True)
+    secondSentence = result.stdout.replace("\n", "")
+    
+    command = "Here is an ARC AGI task.\n"
+    command += json.dumps(data["train"]) + "\n"
+    command += "A. " + firstSentence + "\n"
+    command += "B. " + secondSentence + "\n"
+    command += "Without any explanation, give me only the letter that best matches the description of the given task from the two previous proposals."
+    cmd = ["ollama", "run", "gemma3:27b", command]
+    result = subprocess.run(cmd, capture_output = True, text = True)
+    sentence = firstSentence if result.stdout.strip() == "A" else secondSentence
     #print(sentence)
 
     file = open("primitives.py")
@@ -89,31 +102,34 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
 
         functionContent = "\n".join(functionLines)
 
-        command = "Task description:\n"
+        command = "ARC AGI task description:\n"
         command += sentence + "\n"
         command += "Primitive:\n"
         command += functionContent + "\n"
-        command += "GIVE ME ONLY WITHOUT ANY EXPLANATION THE NUMBER that corresponds to the relevance of this primitive to the given task. (a score of 0.0 indicates a useless function, a score of 1.0 indicates an essential function)?\n"
+        command += "WITHOUT ANY EXPLANATION, GIVE ME ONLY THE NUMBER that corresponds to the relevance of this primitive to the given task (a score of 0.0 indicates a useless function, a score of 1.0 indicates an essential function).\n"
 
         cmd = ["ollama", "run", modelName, command]
         result = subprocess.run(cmd, capture_output = True, text = True)
-        scores[function] = float(result.stdout.split()[0])
+        scores[function] = float(result.stdout)
 
     scores = dict(list(reversed(sorted(scores.items(), key = lambda x: x[1]))))
+    #print(scores)
     #functions = list(scores.keys())
     scores = list({k: v for k, v in scores.items() if v > 0}.items())
-    #print(scores)
 
-    functions = [scores[0][0]]
-    lastScore = scores[0][1]
+    functions = []
 
-    for i in range(1, len(scores)):
-        if (abs(lastScore - scores[i][1]) > 0.25):
-            break
+    if (len(scores)):
+        functions = [scores[0][0]]
+        lastScore = scores[0][1]
 
-        lastScore = scores[i][1]
-        functions.append(scores[i][0])
-    #print(functions)
+        for i in range(1, len(scores)):
+            if (abs(lastScore - scores[i][1]) > 0.25):
+                break
+
+            lastScore = scores[i][1]
+            functions.append(scores[i][0])
+    print(functions)
     definitions = []
 
     #...
