@@ -78,7 +78,7 @@ def heuristic(val, target):
                 unknown = True
         else:
             unknown = True
-        
+
     return 999.0
 
 class Pair:
@@ -92,9 +92,9 @@ class Pair:
 def connectionWorker(connection, args):
     c = connection.copy()
     c.applyInputs(args)
-    
+
     return c
-                    
+
 def worker(eps, connection, bestPair, g, target, processes, processId, connectionId):
     while (processes[processId]):
         try:
@@ -172,14 +172,14 @@ class Brain:
 
                     for v in l:
                         args[i].append(v)
-                        
+
                 product = list(itertools.product(*args))
 
                 from pathos.multiprocessing import ProcessingPool as Pool
 
                 with Pool(nodes = multiprocessing.cpu_count()) as p:
                     s |= set(p.map(connectionWorker, [connection] * len(product), product))
-                
+
                 mapping[connection.neuron.outputType] = s
 
             connectionMapping = mapping
@@ -271,11 +271,7 @@ class Brain:
                     finishedSets[i] = True
                     continue
 
-                count = 0
-
-                while (its[i] != len(sets[i]) and count <  multiprocessing.cpu_count()):
-                    count += 1
-
+                while (its[i] != len(sets[i])):
                     connectionId = sets[i][its[i]].connectionId
                     connection = conns[connectionId]
                     g = connectionParameters.get(connection, None)
@@ -322,6 +318,6 @@ class Brain:
             solutions = sorted(solutions, key = lambda c: c.cost())
 
             learnedConnections.append(solutions[0])
-
+        exit()
         return learnedConnections
 
