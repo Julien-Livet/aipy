@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 
 def dotSegment(dst: np.ndarray, begin: tuple[int, int], end: tuple[int, int], value: int, dot_step: int) -> np.ndarray:
