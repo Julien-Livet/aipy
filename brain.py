@@ -318,6 +318,6 @@ class Brain:
             solutions = sorted(solutions, key = lambda c: c.cost())
 
             learnedConnections.append(solutions[0])
-        exit()
+
         return learnedConnections
 
