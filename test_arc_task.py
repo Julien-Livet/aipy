@@ -63,7 +63,7 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
     cmd = ["ollama", "run", "gemma3:27b", command]
     result = subprocess.run(cmd, capture_output = True, text = True)
     secondSentence = result.stdout.replace("\n", "")
-    
+
     command = "Here is an ARC AGI task.\n"
     command += json.dumps(data["train"]) + "\n"
     command += "A. " + firstSentence + "\n"
@@ -129,7 +129,7 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
 
             lastScore = scores[i][1]
             functions.append(scores[i][0])
-    print(functions)
+    #print(functions)
     definitions = []
 
     #...

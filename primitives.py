@@ -3,7 +3,7 @@ import copy
 import numpy as np
 import utils
 
-def segments(dst: list[np.ndarray], pairs: list[list[tuple[tuple[int, int]], tuple[int, int]]], value: int, start: bool, finish: bool) -> list[np.ndarray]:
+def segments(dst: list[np.ndarray], pairs: list[list[tuple[tuple[int, int], tuple[int, int]]]], value: int, start: bool, finish: bool) -> list[np.ndarray]:
     """
     Connect two locations with straight lines in numpy arrays with the specified value considering coloring or not start and finish points
     """
@@ -82,7 +82,7 @@ def inferColorMapping(pairs: list[tuple[np.ndarray, np.ndarray]]) -> dict:
 
     return mapping
 
-def sameElement(pairs: list[list[tuple[tuple[int, int]], tuple[int, int]]], first: bool) -> list[list[tuple[tuple[int, int], tuple[int, int]]]]:
+def sameElement(pairs: list[list[tuple[tuple[int, int], tuple[int, int]]]], first: bool) -> list[list[tuple[tuple[int, int], tuple[int, int]]]]:
     """
     Return a list of index pairs where the elements are the same considering first or second element of a pair (a pair is a grid location)
     """
