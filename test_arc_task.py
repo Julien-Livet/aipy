@@ -58,18 +58,18 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
     file.close()
 
     verbProperties = {}
-    
+
     lines = content.split("\n")
     index = 0
-    
+
     while (index < len(lines) and not lines[index].startswith("Verb properties")):
         index += 1
-    
+
     index += 1
-    
+
     while (index < len(lines) and lines[index] != '"""'):
         i = lines[index].index(":")
-        verbProperties[lines[index][:i]] = lines[index][i + 2:] 
+        verbProperties[lines[index][:i]] = lines[index][i + 2:]
         index += 1
 
     functions = []
@@ -101,10 +101,10 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
     for count in range(0, 5):
         verbs = set(np.unique([x.split()[0] for x in descriptions.values()]))
         selectedVerbs = []
-        
+
         while (len(verbs) != 1):
             command = "You are given several input-output grid pairs from an ARC task.\n"
-            
+
             #command += json.dumps(data["train"]) + "\n"
             for i in range(len(data["train"])):
                 command += "(" + json.dumps(data["train"][i]["input"]) + ", " + json.dumps(data["train"][i]["output"]) + ")\n"
@@ -143,22 +143,32 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
             #print(verb)
             verbs.remove(verb)
             selectedVerbs.append(verb)
-        
+
         selectedVerbs.append(verbs.pop())
         selectedVerbs = list(reversed(selectedVerbs))
         selection.append(tuple(selectedVerbs))
 
-    hashes = [hash(x) for x in selection]
-    un, count = np.unique(hashes, return_counts = True)
-    i = count.tolist().index(max(count))
-
     selectedVerbs = []
+    m = {}
 
-    for x in selection:
-        if (hash(x) == un[i]):
-            selectedVerbs = x
-            break
-    #print(selectedVerbs)
+    for i in range(0, len(selection[0])):
+        for j in range(0, len(selection)):
+            v = m.get(selection[j][i], 0)
+            v += 1
+            m[selection[j][i]] = v
+
+        for v in selectedVerbs:
+            if (m.get(v, None)):
+                del m[v]
+
+        value = max(m.values())
+
+        for k, v in m.items():
+            if (v == value):
+                selectedVerbs.append(k)
+                del m[k]
+                break
+    #print("selectedVerbs", selectedVerbs)
     functions = {}
 
     for k, v in descriptions.items():
@@ -170,7 +180,7 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
 
     for verb in selectedVerbs:
         selectedFunctions.extend(functions[verb])
-    #print(selectedFunctions)
+    #print("selectedFunctions", selectedFunctions)
     return selectedFunctions, []
 
 def updateRegionNeurons(regionNeurons: dict, pairs: list[np.ndarray]):
