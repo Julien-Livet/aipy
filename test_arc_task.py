@@ -96,63 +96,78 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
 
         descriptions[function] = functionLines[-1].strip()
 
-    verbs = set(np.unique([x.split()[0] for x in descriptions.values()]))
-    selectedVerbs = []
-    
-    while (len(verbs) != 1):
-        command = "You are given several input-output grid pairs from an ARC task.\n"
+    selection = []
+
+    for count in range(0, 5):
+        verbs = set(np.unique([x.split()[0] for x in descriptions.values()]))
+        selectedVerbs = []
         
-        #command += json.dumps(data["train"]) + "\n"
-        for i in range(len(data["train"])):
-            command += "(" + json.dumps(data["train"][i]["input"]) + ", " + json.dumps(data["train"][i]["output"]) + ")\n"
+        while (len(verbs) != 1):
+            command = "You are given several input-output grid pairs from an ARC task.\n"
+            
+            #command += json.dumps(data["train"]) + "\n"
+            for i in range(len(data["train"])):
+                command += "(" + json.dumps(data["train"][i]["input"]) + ", " + json.dumps(data["train"][i]["output"]) + ")\n"
 
-        command += """
-For EACH verb below, check whether it ENFORCES the following property:
+            command += """
+    For EACH verb below, check whether it ENFORCES the following property:
 
-PROPERTY:
-"If this verb is the main abstraction, then this property MUST hold for ALL input-output pairs."
+    PROPERTY:
+    "If this verb is the main abstraction, then this property MUST hold for ALL input-output pairs."
 
-If the property is violated by at least one example, the verb is INVALID.
+    If the property is violated by at least one example, the verb is INVALID.
 
-Verbs and their mandatory properties:
-"""
-        selectedProperties = dict(list(filter(lambda x: x[0] in verbs, verbProperties.items())))
+    Verbs and their mandatory properties:
+    """
+            selectedProperties = dict(list(filter(lambda x: x[0] in verbs, verbProperties.items())))
 
-        command += "\n".join(["- " + k + ": " + v for k, v in selectedProperties.items()]) + "\n"
-        command += """
-Task:
-Select ONE verb whose mandatory property is violated.
+            command += "\n".join(["- " + k + ": " + v for k, v in selectedProperties.items()]) + "\n"
+            command += """
+    Task:
+    Select ONE verb whose mandatory property is violated.
 
-Answer ONLY with the good verb name.
-Do NOT explain."""
+    WITHOUT ANY FORMATTING, answer ONLY with the right verb name.
+    Do NOT explain."""
 
-        scores = {}
+            scores = {}
 
-        for i in range(0, 3):
-            cmd = ["ollama", "run", modelName, command]
-            result = subprocess.run(cmd, capture_output = True, text = True)
-            verb = result.stdout.strip()
-            score = scores.get(verb, 0)
-            score += 1
-            scores[verb] = score
-        #print("scores", scores)
-        verb = sorted(scores.items(), key = lambda x: x[1])[-1][0]
-        #print(verb)
-        verbs.remove(verb)
-        selectedVerbs.append(verb)
-    
-    selectedVerbs.append(verbs.pop())
-    selectedVerbs = list(reversed(selectedVerbs))
+            for i in range(0, 5):
+                cmd = ["ollama", "run", modelName, command]
+                result = subprocess.run(cmd, capture_output = True, text = True)
+                verb = result.stdout.strip()
+                score = scores.get(verb, 0)
+                score += 1
+                scores[verb] = score
+            #print("scores", scores)
+            verb = sorted(scores.items(), key = lambda x: x[1])[-1][0]
+            #print(verb)
+            verbs.remove(verb)
+            selectedVerbs.append(verb)
+        
+        selectedVerbs.append(verbs.pop())
+        selectedVerbs = list(reversed(selectedVerbs))
+        selection.append(tuple(selectedVerbs))
+
+    hashes = [hash(x) for x in selection]
+    un, count = np.unique(hashes, return_counts = True)
+    i = count.tolist().index(max(count))
+
+    selectedVerbs = []
+
+    for x in selection:
+        if (hash(x) == un[i]):
+            selectedVerbs = x
+            break
     #print(selectedVerbs)
     functions = {}
-    
+
     for k, v in descriptions.items():
         l = functions.get(v.split()[0], [])
         l.append(k)
         functions[v.split()[0]] = l
-    
+
     selectedFunctions = []
-    
+
     for verb in selectedVerbs:
         selectedFunctions.extend(functions[verb])
     #print(selectedFunctions)
