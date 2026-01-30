@@ -6,6 +6,7 @@ import math
 from neuron import Neuron
 import numpy as np
 import pytest
+import re
 import subprocess
 import time
 import urllib.request
@@ -50,33 +51,26 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
     url = urllib.request.urlopen("https://raw.githubusercontent.com/arcprize/ARC-AGI-2/refs/heads/main/data/" + folder + "/" + task + ".json")
     data = json.loads(url.read().decode())
 
-    command = "Here is an ARC AGI task.\n"
-    command += json.dumps(data["train"]) + "\n"
-    command += "Describe the transformation performed in ONE abstract sentence (ignoring the exact dimensions, coordinates and numbers).\n"
-    command += "Do not mention any Python functions."
-
-    modelName = "gemma3"
-
-    cmd = ["ollama", "run", "gemma3", command]
-    result = subprocess.run(cmd, capture_output = True, text = True)
-    firstSentence = result.stdout.replace("\n", "")
-    cmd = ["ollama", "run", "gemma3:27b", command]
-    result = subprocess.run(cmd, capture_output = True, text = True)
-    secondSentence = result.stdout.replace("\n", "")
-
-    command = "Here is an ARC AGI task.\n"
-    command += json.dumps(data["train"]) + "\n"
-    command += "A. " + firstSentence + "\n"
-    command += "B. " + secondSentence + "\n"
-    command += "Without any explanation, give me only the letter that best matches the description of the given task from the two previous proposals."
-    cmd = ["ollama", "run", "gemma3:27b", command]
-    result = subprocess.run(cmd, capture_output = True, text = True)
-    sentence = firstSentence if result.stdout.strip() == "A" else secondSentence
-    #print(sentence)
+    modelName = "llama3.1"
 
     file = open("primitives.py")
     content = file.read()
     file.close()
+
+    verbProperties = {}
+    
+    lines = content.split("\n")
+    index = 0
+    
+    while (index < len(lines) and not lines[index].startswith("Verb properties")):
+        index += 1
+    
+    index += 1
+    
+    while (index < len(lines) and lines[index] != '"""'):
+        i = lines[index].index(":")
+        verbProperties[lines[index][:i]] = lines[index][i + 2:] 
+        index += 1
 
     functions = []
 
@@ -88,7 +82,7 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
 
     import primitives
 
-    scores = {}
+    descriptions = {}
 
     for function in functions:
         cmd = ["python", "-c", "import primitives; help(primitives." + function + ")"]
@@ -100,41 +94,69 @@ def bestPrimitives(folder: str, task: str, connectionStr: str, cost: float) -> t
             del functionLines[0]
             del functionLines[-1]
 
-        functionContent = "\n".join(functionLines)
+        descriptions[function] = functionLines[-1].strip()
 
-        command = "ARC AGI task description:\n"
-        command += sentence + "\n"
-        command += "Primitive:\n"
-        command += functionContent + "\n"
-        command += "WITHOUT ANY EXPLANATION, GIVE ME ONLY THE NUMBER that corresponds to the relevance of this primitive to the given task (a score of 0.0 indicates a useless function, a score of 1.0 indicates an essential function).\n"
+    verbs = set(np.unique([x.split()[0] for x in descriptions.values()]))
+    selectedVerbs = []
+    
+    while (len(verbs) != 1):
+        command = "You are given several input-output grid pairs from an ARC task.\n"
+        
+        #command += json.dumps(data["train"]) + "\n"
+        for i in range(len(data["train"])):
+            command += "(" + json.dumps(data["train"][i]["input"]) + ", " + json.dumps(data["train"][i]["output"]) + ")\n"
 
-        cmd = ["ollama", "run", modelName, command]
-        result = subprocess.run(cmd, capture_output = True, text = True)
-        scores[function] = float(result.stdout.replace(" ", "").strip())
+        command += """
+For EACH verb below, check whether it ENFORCES the following property:
 
-    scores = dict(list(reversed(sorted(scores.items(), key = lambda x: x[1]))))
-    #print(scores)
-    #functions = list(scores.keys())
-    scores = list({k: v for k, v in scores.items() if v > 0}.items())
+PROPERTY:
+"If this verb is the main abstraction, then this property MUST hold for ALL input-output pairs."
 
-    functions = []
+If the property is violated by at least one example, the verb is INVALID.
 
-    if (len(scores)):
-        functions = [scores[0][0]]
-        lastScore = scores[0][1]
+Verbs and their mandatory properties:
+"""
+        selectedProperties = dict(list(filter(lambda x: x[0] in verbs, verbProperties.items())))
 
-        for i in range(1, len(scores)):
-            if (abs(lastScore - scores[i][1]) > 0.25):
-                break
+        command += "\n".join(["- " + k + ": " + v for k, v in selectedProperties.items()]) + "\n"
+        command += """
+Task:
+Select ONE verb whose mandatory property is violated.
 
-            lastScore = scores[i][1]
-            functions.append(scores[i][0])
-    #print(functions)
-    definitions = []
+Answer ONLY with the good verb name.
+Do NOT explain."""
 
-    #...
+        scores = {}
 
-    return (functions, definitions)
+        for i in range(0, 3):
+            cmd = ["ollama", "run", modelName, command]
+            result = subprocess.run(cmd, capture_output = True, text = True)
+            verb = result.stdout.strip()
+            score = scores.get(verb, 0)
+            score += 1
+            scores[verb] = score
+        #print("scores", scores)
+        verb = sorted(scores.items(), key = lambda x: x[1])[-1][0]
+        #print(verb)
+        verbs.remove(verb)
+        selectedVerbs.append(verb)
+    
+    selectedVerbs.append(verbs.pop())
+    selectedVerbs = list(reversed(selectedVerbs))
+    #print(selectedVerbs)
+    functions = {}
+    
+    for k, v in descriptions.items():
+        l = functions.get(v.split()[0], [])
+        l.append(k)
+        functions[v.split()[0]] = l
+    
+    selectedFunctions = []
+    
+    for verb in selectedVerbs:
+        selectedFunctions.extend(functions[verb])
+    #print(selectedFunctions)
+    return selectedFunctions, []
 
 def updateRegionNeurons(regionNeurons: dict, pairs: list[np.ndarray]):
     regionMap = dict()
@@ -220,11 +242,12 @@ def processTask(folder: str, task: str) -> int:
             if (existingDigits[i]):
                 neurons.append(digitNeurons[i])
 
-        p, definitions = bestPrimitives(folder, task, connectionStr, cost)
+        selectedPrimitives, definitions = bestPrimitives(folder, task, connectionStr, cost)
 
         import primitives
 
-        for primitive in p:
+        for i in range(0, len(selectedPrimitives)):
+            primitive = selectedPrimitives[i]
             function = getattr(primitives, primitive)
             annotations = copy.deepcopy(function.__annotations__)
             outputType = copy.deepcopy(annotations["return"])
@@ -233,28 +256,30 @@ def processTask(folder: str, task: str) -> int:
 
             neurons.append(Neuron(primitive, function, inputTypes, outputType))
 
-        b = brain.Brain(neurons)
+            b = brain.Brain(neurons)
 
-        connections = b.learn([trainPairs[1]], [list[np.ndarray]], level = 3)
+            connections = b.learn([trainPairs[1]], [list[np.ndarray]], level = 3)
 
-        if (len(connections) == 0):
-            continue
+            if (len(connections) == 0):
+                continue
 
-        connection = connections[0]
-        connectionStr = connection.toStr()
+            connection = connections[0]
+            connectionStr = connection.toStr()
 
-        cost = brain.heuristic(connection.output(), trainPairs[1])
+            cost = brain.heuristic(connection.output(), trainPairs[1])
 
-        if (cost):
-            continue
+            if (cost):
+                continue
 
-        updateRegionNeurons(regionNeurons, testPairs[0]);
+            updateRegionNeurons(regionNeurons, testPairs[0]);
 
-        inputNeuron.function = lambda testPairs = testPairs: testPairs[0]
-        cost = brain.heuristic(connection.output(), testPairs[1])
+            inputNeuron.function = lambda testPairs = testPairs: testPairs[0]
+            cost = brain.heuristic(connection.output(), testPairs[1])
 
-        if (cost):
-            continue
+            if (cost):
+                continue
+
+            break
 
     print(connectionStr)
 
@@ -266,3 +291,4 @@ def test_task0d3d703e(): #Color mapping
 
 def test_task253bf280(): #Draw colored segment between pixels that have same x or y coordinates
     processTask("training", "253bf280")
+

@@ -1,6 +1,16 @@
 import copy
 import numpy as np
 
+def associate(mapping: dict, a: int, b: int) -> dict:
+    """
+    Associate a value with another value in a dictionnary
+    """
+    m = copy.deepcopy(mapping)
+
+    m[a] = b
+
+    return m
+
 def dotSegment(dst: np.ndarray, begin: tuple[int, int], end: tuple[int, int], value: int, dot_step: int) -> np.ndarray:
     """
     Dot a straight line between two points in an numpy array with the specified value.

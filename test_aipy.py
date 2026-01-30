@@ -252,7 +252,7 @@ def processTask(folder: str, task: str, activatedNeuronNames: list[str]):
     fliplrNeuron = Neuron("fliplr", primitives.fliplr, [list[np.ndarray]], list[np.ndarray])
     flipudNeuron = Neuron("flipud", primitives.flipud, [list[np.ndarray]], list[np.ndarray])
     mappingNeuron = Neuron("mapping", lambda: dict(), [], dict())
-    associateNeuron = Neuron("associate", primitives.associate, [dict, int, int], dict)
+    associateNeuron = Neuron("associate", utils.associate, [dict, int, int], dict)
     mapNeuron = Neuron("map", primitives.map, [list[np.ndarray], dict], list[np.ndarray])
     inferColorMappingNeuron = Neuron("inferColorMapping", primitives.inferColorMapping, [list[tuple[np.ndarray, np.ndarray]]], dict)
     pairsNeuron = Neuron("pairs", lambda v, taskPairs = taskPairs: [] if len(taskPairs[0]) != len(v) else [(v[i], taskPairs[0][i][1]) for i in range(0, len(taskPairs[0]))],

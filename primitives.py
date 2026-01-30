@@ -3,9 +3,17 @@ import copy
 import numpy as np
 import utils
 
+"""
+Verb properties:
+Map: output pixel positions are identical to input positions.
+Flip: output pixel VALUES are identical to input values (only positions change).
+Segment: new pixels appear between existing pixels to form continuous structures.
+Pair: output changes depend on relationships between two or more input elements.
+"""
+
 def segments(dst: list[np.ndarray], pairs: list[list[tuple[tuple[int, int], tuple[int, int]]]], value: int, start: bool, finish: bool) -> list[np.ndarray]:
     """
-    Connect two locations with straight lines in numpy arrays with the specified value considering coloring or not start and finish points
+    Segment two locations in numpy arrays
     """
     if (len(dst) != len(pairs)):
         return []
@@ -34,7 +42,7 @@ def segments(dst: list[np.ndarray], pairs: list[list[tuple[tuple[int, int], tupl
 
 def map(x: list[np.ndarray], mapping: dict) -> list[np.ndarray]:
     """
-    Return numpy arrays which cells ared mapped from a dictionnary
+    Map numpy arrays cells from a mapping
     """
 
     result = []
@@ -50,19 +58,9 @@ def map(x: list[np.ndarray], mapping: dict) -> list[np.ndarray]:
 
     return result
 
-def associate(mapping: dict, a: int, b: int) -> dict:
-    """
-    Associate a value with another value in a dictionnary
-    """
-    m = copy.deepcopy(mapping)
-
-    m[a] = b
-
-    return m
-
 def inferColorMapping(pairs: list[tuple[np.ndarray, np.ndarray]]) -> dict:
     """
-    Infer a color mapping from the given pairs of numpy arrays as a dictionnary (a pair is a grid location)
+    Map given locations of numpy arrays
     """
     mapping = {}
 
@@ -84,7 +82,7 @@ def inferColorMapping(pairs: list[tuple[np.ndarray, np.ndarray]]) -> dict:
 
 def sameElement(pairs: list[list[tuple[tuple[int, int], tuple[int, int]]]], first: bool) -> list[list[tuple[tuple[int, int], tuple[int, int]]]]:
     """
-    Return a list of index pairs where the elements are the same considering first or second element of a pair (a pair is a grid location)
+    Pair a list of index pairs where the elements are the same considering first or second element of a pair (a pair is a grid location)
     """
 
     result = []
@@ -106,7 +104,7 @@ def sameElement(pairs: list[list[tuple[tuple[int, int], tuple[int, int]]]], firs
 
 def regionPairs(regions: list[list[list[tuple[int, int]]]]) -> list[list[tuple[tuple[int, int], tuple[int, int]]]]:
     """
-    Return a list of paired regions from a list of regions (a region is a list of connected pairs of same value, a pair is a grid location)
+    Pair a list of regions (a region is a list of connected pairs of same value, a pair is a grid location)
     """
 
     result = []
@@ -126,14 +124,14 @@ def regionPairs(regions: list[list[list[tuple[int, int]]]]) -> list[list[tuple[t
 
 def fliplr(x: list[np.ndarray]) -> list[np.ndarray]:
     """
-    Flip left/right a list of numpy array
+    Flip left and right columns
     """
 
     return [np.fliplr(y) for y in x]
 
 def flipud(x: list[np.ndarray]) -> list[np.ndarray]:
     """
-    Flip up/down a list of numpy array
+    Flip up and down rows
     """
 
     return [np.flipud(y) for y in x]
