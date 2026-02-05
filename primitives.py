@@ -1,4 +1,3 @@
-import brain
 import copy
 import numpy as np
 import utils
@@ -40,7 +39,7 @@ def segments(dst: list[np.ndarray], pairs: list[list[tuple[tuple[int, int], tupl
 
     return result
 
-def map(x: list[np.ndarray], mapping: dict) -> list[np.ndarray]:
+def map(x: list[np.ndarray], mapping: dict[int, int]) -> list[np.ndarray]:
     """
     Map numpy arrays cells from a mapping
     """
@@ -58,7 +57,7 @@ def map(x: list[np.ndarray], mapping: dict) -> list[np.ndarray]:
 
     return result
 
-def inferColorMapping(pairs: list[tuple[np.ndarray, np.ndarray]]) -> dict:
+def inferColorMapping(pairs: list[tuple[np.ndarray, np.ndarray]]) -> dict[int, int]:
     """
     Map given locations of numpy arrays
     """

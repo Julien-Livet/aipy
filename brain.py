@@ -271,6 +271,10 @@ class Brain:
                     finishedSets[i] = True
                     continue
 
+                if (sets[i][its[i]].cost < eps):
+                    finishedSets[i] = True
+                    continue
+
                 while (its[i] != len(sets[i])):
                     connectionId = sets[i][its[i]].connectionId
                     connection = conns[connectionId]

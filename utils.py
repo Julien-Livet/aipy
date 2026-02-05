@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 
-def associate(mapping: dict, a: int, b: int) -> dict:
+def associate(mapping: dict[int, int], a: int, b: int) -> dict[int, int]:
     """
     Associate a value with another value in a dictionnary
     """
